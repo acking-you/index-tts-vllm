@@ -81,6 +81,12 @@ async def tts_api_url(request: Request):
         emo_text = data.get("emo_text", None)
         emo_random = data.get("emo_random", False)
         max_text_tokens_per_sentence = data.get("max_text_tokens_per_sentence", 120)
+        speech_length = data.get("speech_length", 0)
+        try:
+            speech_length = int(float(speech_length))
+        except (TypeError, ValueError):
+            speech_length = 0
+        speech_length = max(0, speech_length)
 
         global tts
         if type(emo_control_method) is not int:
@@ -110,7 +116,8 @@ async def tts_api_url(request: Request):
                         emo_audio_prompt=emo_ref_path, emo_alpha=emo_weight,
                         emo_vector=vec,
                         use_emo_text=(emo_control_method==3), emo_text=emo_text,use_random=emo_random,
-                        max_text_tokens_per_sentence=int(max_text_tokens_per_sentence))
+                        max_text_tokens_per_sentence=int(max_text_tokens_per_sentence),
+                        speech_length=speech_length)
         
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')

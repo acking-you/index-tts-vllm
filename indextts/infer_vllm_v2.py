@@ -258,6 +258,13 @@ class IndexTTS2:
         logger.info(">> start inference...")
         start_time = time.perf_counter()
 
+        speech_length_raw = generation_kwargs.pop("speech_length", 0)
+        try:
+            speech_length = int(float(speech_length_raw))
+        except (TypeError, ValueError):
+            speech_length = 0
+        speech_length = max(0, speech_length)
+
         if use_emo_text:
             emo_audio_prompt = None
             emo_alpha = 1.0
@@ -336,6 +343,11 @@ class IndexTTS2:
             print("max_text_tokens_per_sentence:", max_text_tokens_per_sentence)
             print(*sentences, sep="\n")
 
+        effective_speech_length_ms = speech_length
+        if speech_length > 0 and interval_silence > 0 and len(sentences) > 1:
+            silence_total_ms = int(interval_silence * (len(sentences) - 1))
+            effective_speech_length_ms = max(0, speech_length - silence_total_ms)
+
         sampling_rate = 22050
 
         wavs = []
@@ -344,7 +356,7 @@ class IndexTTS2:
         s2mel_time = 0
         bigvgan_time = 0
         has_warned = False
-        for sent in sentences:
+        for seg_idx, sent in enumerate(sentences):
             text_tokens = self.tokenizer.convert_tokens_to_ids(sent)
             text_tokens = torch.tensor(text_tokens, dtype=torch.int32, device=self.device).unsqueeze(0)
 
@@ -438,7 +450,38 @@ class IndexTTS2:
                     S_infer = self.semantic_codec.quantizer.vq2emb(codes.unsqueeze(1))
                     S_infer = S_infer.transpose(1, 2)
                     S_infer = S_infer + latent
-                    target_lengths = (code_lens * 1.72).long()
+                    base_target_lengths = (code_lens * 1.72).long()
+
+                    if speech_length == 0:
+                        target_lengths = base_target_lengths
+                    else:
+                        hop_length = int(self.cfg.s2mel["preprocess_params"]["spect_params"]["hop_length"])
+                        frame_duration_ms = hop_length / sampling_rate * 1000.0
+
+                        len_total = len(text_tokens_list)
+                        len_current = len(sent)
+                        if len_total <= 0 or len_current <= 0 or effective_speech_length_ms <= 0:
+                            target_lengths = base_target_lengths
+                            logger.warning(
+                                f">> speech_length enabled but invalid token stats; falling back to default duration for segment {seg_idx}."
+                            )
+                        else:
+                            duration_ratio = len_current / len_total
+                            target_chunk_ms = int(effective_speech_length_ms * duration_ratio)
+                            if verbose:
+                                logger.info(
+                                    f">> speech_length={speech_length}ms (effective={effective_speech_length_ms}ms), "
+                                    f"segment {seg_idx + 1}/{len(sentences)}: {duration_ratio * 100:.2f}% -> {target_chunk_ms}ms"
+                                )
+                            len_tensor = torch.full_like(code_lens, fill_value=target_chunk_ms, dtype=torch.long)
+                            target_lengths = torch.clamp(
+                                (len_tensor.float() / frame_duration_ms).long(),
+                                min=1,
+                            )
+
+                            max_seq_length = 8192
+                            max_target_len = max(1, max_seq_length - int(prompt_condition.size(1)))
+                            target_lengths = torch.clamp(target_lengths, max=max_target_len)
 
                     cond = self.s2mel.models['length_regulator'](S_infer,
                                                                  ylens=target_lengths,
