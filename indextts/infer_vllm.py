@@ -200,9 +200,15 @@ class IndexTTS:
         # print("filtered_latent", filtered_latent.shape)
         return filtered_latent
 
-    async def infer(self, audio_prompt: List[str], text, output_path=None, verbose=False, seed=None):
+    async def infer(self, audio_prompt: List[str], text, output_path=None, verbose=False, seed=None, speech_length=0):
         print(">> start inference...")
         start_time = time.perf_counter()
+
+        try:
+            speech_length = int(float(speech_length))
+        except (TypeError, ValueError):
+            speech_length = 0
+        speech_length = max(0, speech_length)
 
         auto_conditioning = []
         for ap_ in audio_prompt:
@@ -274,9 +280,32 @@ class IndexTTS:
                 # wavs.append(wav[:, :-512])
                 wavs.append(wav.cpu())  # to cpu before saving
         torch.cuda.empty_cache()
-        end_time = time.perf_counter()
 
         wav = torch.cat(wavs, dim=1)
+
+        # Optional: adjust the output waveform duration (ms) via time-stretch.
+        # Default is 0 (disabled).
+        if speech_length and speech_length > 0:
+            try:
+                import librosa
+
+                target_len = int(sampling_rate * (speech_length / 1000.0))
+                if target_len > 0 and wav.numel() > 0:
+                    y = (wav.squeeze(0).cpu().numpy().astype(np.float32) / 32767.0)
+                    cur_len = int(y.shape[0])
+                    if cur_len > 0 and cur_len != target_len:
+                        rate = cur_len / target_len
+                        y = librosa.effects.time_stretch(y, rate=rate)
+                        if y.shape[0] > target_len:
+                            y = y[:target_len]
+                        elif y.shape[0] < target_len:
+                            y = np.pad(y, (0, target_len - y.shape[0]))
+                        y = np.clip(y, -1.0, 1.0)
+                        wav = torch.from_numpy(y).unsqueeze(0) * 32767.0
+            except Exception as ex:
+                print(f">> Failed to apply speech_length={speech_length}ms. Falling back to default audio length. Error: {ex}")
+
+        end_time = time.perf_counter()
         wav_length = wav.shape[-1] / sampling_rate
         print(f">> gpt_gen_time: {gpt_gen_time:.2f} seconds")
         print(f">> bigvgan_time: {bigvgan_time:.2f} seconds")
@@ -300,7 +329,9 @@ class IndexTTS:
             # 返回以符合Gradio的格式要求
             wav_data = wav.type(torch.int16)
             wav_data = wav_data.numpy().T
-            wav_data = trim_and_pad_silence(wav_data)
+            # If speech_length is enabled, avoid auto-padding extra silence.
+            if not (speech_length and speech_length > 0):
+                wav_data = trim_and_pad_silence(wav_data)
             return (sampling_rate, wav_data)
         
     async def infer_with_ref_audio_embed(self, speaker: str, text):

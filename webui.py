@@ -35,7 +35,7 @@ else:
         model_dir = os.path.join(CURRENT_DIR, "checkpoints/Index-TTS-1.5-vLLM")
 
 
-async def gen_single(prompts, text, progress=gr.Progress()):
+async def gen_single(prompts, text, speech_length=0, progress=gr.Progress()):
     output_path = None
     tts.gr_progress = progress
     
@@ -44,7 +44,13 @@ async def gen_single(prompts, text, progress=gr.Progress()):
     else:
         prompt_paths = [prompts.name] if prompts is not None else []
     
-    output = await tts.infer(prompt_paths, text, output_path, verbose=True)
+    try:
+        speech_length = int(float(speech_length))
+    except (TypeError, ValueError):
+        speech_length = 0
+    speech_length = max(0, speech_length)
+
+    output = await tts.infer(prompt_paths, text, output_path, verbose=True, speech_length=speech_length)
     return gr.update(value=output, visible=True)
 
 def update_prompt_audio():
@@ -73,6 +79,15 @@ if __name__ == "__main__":
                 )
                 with gr.Column():
                     input_text_single = gr.TextArea(label="请输入目标文本", key="input_text_single")
+                    speech_length = gr.Number(
+                        label="目标语音时长(ms)",
+                        precision=0,
+                        value=0,
+                        minimum=0,
+                        step=100,
+                        info="0 表示不启用；用于尽量匹配生成音频总时长（效果为近似）。",
+                        key="speech_length",
+                    )
                     gen_button = gr.Button("生成语音", key="gen_button", interactive=True)
                 output_audio = gr.Audio(label="生成结果", visible=True, key="output_audio")
 
@@ -84,7 +99,7 @@ if __name__ == "__main__":
 
         gen_button.click(
             gen_single,
-            inputs=[prompt_audio, input_text_single],
+            inputs=[prompt_audio, input_text_single, speech_length],
             outputs=[output_audio]
         )
 

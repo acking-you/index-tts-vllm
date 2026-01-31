@@ -92,9 +92,15 @@ async def tts_api_url(request: Request):
         text = data["text"]
         audio_paths = data["audio_paths"]
         seed = data.get("seed", 8)
+        speech_length = data.get("speech_length", 0)
+        try:
+            speech_length = int(float(speech_length))
+        except (TypeError, ValueError):
+            speech_length = 0
+        speech_length = max(0, speech_length)
 
         global tts
-        sr, wav = await tts.infer(audio_paths, text, seed=seed)
+        sr, wav = await tts.infer(audio_paths, text, seed=seed, speech_length=speech_length)
         
         with io.BytesIO() as wav_buffer:
             sf.write(wav_buffer, wav, sr, format='WAV')

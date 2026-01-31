@@ -124,6 +124,8 @@ uv run python webui.py --version 1.5
 uv run python webui_v2.py
 ```
 
+> WebUI: supports `speech_length` (target duration in ms, default `0` = disabled) to make the generated audio length roughly match the specified duration.
+
 > Note: The first run may try to compile BigVGAN CUDA extensions. If you see `nvcc fatal: Unsupported gpu architecture 'compute_120'`, it's usually caused by an older CUDA Toolkit; the code will fall back to the pure torch implementation and should still work. You can also skip the build entirely via `./run_webui.sh --no-cuda-kernel` or `INDEXTTS_USE_CUDA_KERNEL=0`.
 
 

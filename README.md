@@ -142,6 +142,8 @@ uv run python webui.py --version 1.5
 uv run python webui_v2.py
 ```
 
+> WebUI 参数：已支持“目标语音时长(ms)”（`speech_length`，默认 `0` 关闭），用于让生成音频总时长尽量接近指定值（效果为近似）。
+
 > 说明：首次启动可能会尝试编译 BigVGAN 的 CUDA 扩展。如果你看到类似 `nvcc fatal: Unsupported gpu architecture 'compute_120'` 的报错，通常是 CUDA Toolkit（nvcc）版本偏旧导致；程序会自动回退到 torch 实现，一般不影响使用。你也可以通过 `./run_webui.sh --no-cuda-kernel` 或设置环境变量 `INDEXTTS_USE_CUDA_KERNEL=0` 来直接跳过编译。
 
 ## API
