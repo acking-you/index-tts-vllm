@@ -32,32 +32,55 @@ Inference speed improvement (Index-TTS-v1/v1.5) on a single RTX 4090:
 
 ## Usage Steps
 
+### 0. Requirements (Important)
+
+- Recommended: Linux / WSL2 + NVIDIA GPU (vLLM generally requires CUDA)
+- Python: 3.12 (this repo includes `.python-version`)
+- System deps: `ffmpeg` is recommended
+
 ### 1. Clone this project
 ```bash
-git clone https://github.com/Ksuriuri/index-tts-vllm.git
+git clone https://github.com/acking-you/index-tts-vllm.git
 cd index-tts-vllm
 ```
 
+### 2. One-click run (Recommended: uv)
 
-### 2. Create and activate a conda environment
+By default this starts the **IndexTTS-1.5 WebUI** and automatically:
+- installs/uses `uv`
+- runs `uv sync` to install Python deps
+- downloads model weights from ModelScope if missing
+
 ```bash
-conda create -n index-tts-vllm python=3.12
-conda activate index-tts-vllm
+./run_webui.sh
 ```
 
+Common options:
 
-### 3. Install PyTorch
-
-PyTorch version 2.8.0 is required (corresponding to vllm 0.10.2). For specific installation instructions, please refer to the [PyTorch official website](https://pytorch.org/get-started/locally/).
-
-
-### 4. Install dependencies
 ```bash
-pip install -r requirements.txt
+./run_webui.sh --host 127.0.0.1 --port 6006
+./run_webui.sh --version 1.5    # 1.0 / 1.5 / 2.0
+./run_webui.sh --version 2 --qwenemo-gpu-memory-utilization 0.20
+./run_webui.sh --no-cuda-kernel
+./run_webui.sh --install-system-deps
+./run_webui.sh --cuda-kernel --install-cuda-toolkit
+./run_webui.sh --no-download
+./run_webui.sh --model-dir ./checkpoints/Index-TTS-1.5-vLLM
 ```
 
+### 3. Manual (uv)
 
-### 5. Download model weights
+If you prefer to run without the one-click script:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+uv sync --frozen
+```
+
+Then download model weights and start the WebUI as shown below.
+
+### 4. Download model weights
 
 #### Automatic Download (Recommended)
 
@@ -65,13 +88,13 @@ Download the corresponding version of the model weights to the `checkpoints/` di
 
 ```bash
 # Index-TTS
-modelscope download --model kusuriuri/Index-TTS-vLLM --local_dir ./checkpoints/Index-TTS-vLLM
+uv run modelscope download --model kusuriuri/Index-TTS-vLLM --local_dir ./checkpoints/Index-TTS-vLLM
 
 # IndexTTS-1.5
-modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ./checkpoints/Index-TTS-1.5-vLLM
+uv run modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ./checkpoints/Index-TTS-1.5-vLLM
 
 # IndexTTS-2
-modelscope download --model kusuriuri/IndexTTS-2-vLLM --local_dir ./checkpoints/IndexTTS-2-vLLM
+uv run modelscope download --model kusuriuri/IndexTTS-2-vLLM --local_dir ./checkpoints/IndexTTS-2-vLLM
 ```
 
 #### Manual Download
@@ -86,20 +109,22 @@ You can use `convert_hf_format.sh` to convert the official weight files yourself
 bash convert_hf_format.sh /path/to/your/model_dir
 ```
 
-### 6. Launch the web UI!
+### 5. Launch the web UI!
 
 Run the corresponding version (the first launch may take longer due to CUDA kernel compilation for bigvgan):
 
 ```bash
 # Index-TTS 1.0
-python webui.py
+uv run python webui.py
 
 # IndexTTS-1.5
-python webui.py --version 1.5
+uv run python webui.py --version 1.5
 
 # IndexTTS-2
-python webui_v2.py
+uv run python webui_v2.py
 ```
+
+> Note: The first run may try to compile BigVGAN CUDA extensions. If you see `nvcc fatal: Unsupported gpu architecture 'compute_120'`, it's usually caused by an older CUDA Toolkit; the code will fall back to the pure torch implementation and should still work. You can also skip the build entirely via `./run_webui.sh --no-cuda-kernel` or `INDEXTTS_USE_CUDA_KERNEL=0`.
 
 
 ## API
@@ -108,10 +133,10 @@ An API interface is encapsulated using FastAPI. Here is an example of how to sta
 
 ```bash
 # Index-TTS-1.0/1.5
-python api_server.py
+uv run python api_server.py
 
 # IndexTTS-2
-python api_server_v2.py
+uv run python api_server_v2.py
 ```
 
 ### Startup Parameters

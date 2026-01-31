@@ -1,0 +1,32 @@
+[project]
+name = "index-tts-vllm"
+version = "0.1.0"
+description = "IndexTTS with vLLM backend for faster inference"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "vllm==0.10.2",
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
+    "transformers<5",
+    "descript-audiotools==0.7.2",
+    "matplotlib==3.8.2",
+    "omegaconf",
+    "sentencepiece",
+    "librosa",
+    "gradio",
+    "typer-slim",
+    "pandas",
+    "ninja",
+    "modelscope",
+    "munch==4.0.0",
+    "loguru",
+    "tqdm",
+    "fastapi",
+    "uvicorn",
+    "WeTextProcessing; platform_machine != 'Darwin'",
+    "wetext; platform_system == 'Darwin'",
+]
+
+[dependency-groups]
+dev = []

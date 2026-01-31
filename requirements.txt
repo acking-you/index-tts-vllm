@@ -1,14 +1,21 @@
 vllm==0.10.2
+transformers<5
+torch==2.8.0
+torchaudio==2.8.0
 descript-audiotools==0.7.2
 matplotlib==3.8.2
 omegaconf
 sentencepiece
 librosa
 gradio
+typer-slim
 ninja
 modelscope
 munch==4.0.0
 loguru
+tqdm
+fastapi
+uvicorn
 
 WeTextProcessing; platform_machine != "Darwin"
 wetext; platform_system == "Darwin"

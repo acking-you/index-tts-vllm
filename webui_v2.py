@@ -24,7 +24,7 @@ parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the
 parser.add_argument("--model_dir", type=str, default="checkpoints/IndexTTS-2-vLLM", help="Model checkpoints directory")
 parser.add_argument("--is_fp16", action="store_true", default=False, help="Fp16 infer")
 parser.add_argument("--gpu_memory_utilization", type=float, default=0.25)
-parser.add_argument("--qwenemo_gpu_memory_utilization", type=float, default=0.10)
+parser.add_argument("--qwenemo_gpu_memory_utilization", type=float, default=0.20)
 cmd_args = parser.parse_args()
 
 if not os.path.exists(cmd_args.model_dir):

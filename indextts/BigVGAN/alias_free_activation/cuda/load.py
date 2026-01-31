@@ -46,12 +46,11 @@ def chinese_path_compile_support(sources, buildpath):
 
 
 def load():
-    # Check if cuda 11 is installed for compute capability 8.0
-    cc_flag = []
-    _, bare_metal_major, _ = _get_cuda_bare_metal_version(cpp_extension.CUDA_HOME)
-    if int(bare_metal_major) >= 11:
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_80,code=sm_80")
+    # NOTE: Do not hardcode architectures here.
+    #
+    # New CUDA Toolkits may drop support for older architectures (e.g. sm70),
+    # which would make the build fail even on modern GPUs. Let PyTorch decide
+    # the arch list based on the visible CUDA devices / TORCH_CUDA_ARCH_LIST.
 
     # Build path
     srcpath = pathlib.Path(__file__).parent.absolute()
@@ -69,12 +68,10 @@ def load():
             ],
             extra_cuda_cflags=[
                 "-O3",
-                "-gencode",
-                "arch=compute_70,code=sm_70",
                 "--use_fast_math",
             ]
             + extra_cuda_flags
-            + cc_flag,
+            ,
             verbose=True,
         )
 

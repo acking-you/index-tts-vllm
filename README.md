@@ -32,32 +32,73 @@
 
 ## 使用步骤
 
+### 0. 环境要求（重要）
+
+- 建议：Linux / WSL2 + NVIDIA 显卡（vLLM 基本只支持 NVIDIA CUDA 环境）
+- Python：3.12（本项目已提供 `.python-version`）
+- 系统依赖：建议已安装 `ffmpeg`
+
 ### 1. git 本项目
 ```bash
-git clone https://github.com/Ksuriuri/index-tts-vllm.git
+git clone https://github.com/acking-you/index-tts-vllm.git
 cd index-tts-vllm
 ```
 
 
-### 2. 创建并激活 conda 环境
+### 2. 一键启动（推荐：uv）
+
+默认启动 **IndexTTS-1.5 WebUI**，并自动完成：
+- 安装/使用 `uv`
+- `uv sync` 安装 Python 依赖
+- 若未检测到模型文件则自动从 ModelScope 下载权重
+
 ```bash
-conda create -n index-tts-vllm python=3.12
-conda activate index-tts-vllm
+./run_webui.sh
 ```
 
+常用参数：
 
-### 3. 安装 pytorch
-
-需要 pytorch 版本 2.8.0（对应 vllm 0.10.2），具体安装指令请参考：[pytorch 官网](https://pytorch.org/get-started/locally/)
-
-
-### 4. 安装依赖
 ```bash
-pip install -r requirements.txt
+# 指定端口/host
+./run_webui.sh --host 127.0.0.1 --port 6006
+
+# 切换版本：1.0 / 1.5 / 2.0
+./run_webui.sh --version 1.5
+
+# IndexTTS-2：qwen 情感模型显存占用（遇到 “No available memory for the cache blocks” 时调大）
+./run_webui.sh --version 2 --qwenemo-gpu-memory-utilization 0.20
+
+# 关闭 BigVGAN CUDA 扩展编译（遇到 compute_120 / nvcc 版本偏旧时推荐）
+./run_webui.sh --no-cuda-kernel
+
+# 一键安装系统依赖（需要 sudo；ffmpeg 等）
+./run_webui.sh --install-system-deps
+
+# 安装/升级 CUDA Toolkit（需要 sudo；用于让 nvcc 支持 compute_120 并启用 CUDA 扩展）
+./run_webui.sh --cuda-kernel --install-cuda-toolkit
+
+# 关闭自动下载（只安装依赖 + 启动；模型需手动准备）
+./run_webui.sh --no-download
+
+# 指定模型目录
+./run_webui.sh --model-dir ./checkpoints/Index-TTS-1.5-vLLM
 ```
 
+### 3. 手动方式（uv）
 
-### 5. 下载模型权重
+如果你不想用一键脚本，也可以手动执行：
+
+```bash
+# 安装 uv（如未安装）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 安装依赖（优先使用 lockfile）
+uv sync --frozen
+```
+
+然后参考下方步骤下载模型权重并启动 WebUI。
+
+### 4. 下载模型权重
 
 #### 自动下载（推荐）
 
@@ -65,13 +106,13 @@ pip install -r requirements.txt
 
 ```bash
 # Index-TTS
-modelscope download --model kusuriuri/Index-TTS-vLLM --local_dir ./checkpoints/Index-TTS-vLLM
+uv run modelscope download --model kusuriuri/Index-TTS-vLLM --local_dir ./checkpoints/Index-TTS-vLLM
 
 # IndexTTS-1.5
-modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ./checkpoints/Index-TTS-1.5-vLLM
+uv run modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ./checkpoints/Index-TTS-1.5-vLLM
 
 # IndexTTS-2
-modelscope download --model kusuriuri/IndexTTS-2-vLLM --local_dir ./checkpoints/IndexTTS-2-vLLM
+uv run modelscope download --model kusuriuri/IndexTTS-2-vLLM --local_dir ./checkpoints/IndexTTS-2-vLLM
 ```
 
 #### 手动下载
@@ -86,21 +127,22 @@ modelscope download --model kusuriuri/IndexTTS-2-vLLM --local_dir ./checkpoints/
 bash convert_hf_format.sh /path/to/your/model_dir
 ```
 
-### 6. webui 启动！
+### 5. webui 启动！
 
 运行对应版本（第一次启动可能会久一些，因为要对 bigvgan 进行 cuda 核编译）：
 
 ```bash
 # Index-TTS 1.0
-python webui.py
+uv run python webui.py
 
 # IndexTTS-1.5
-python webui.py --version 1.5
+uv run python webui.py --version 1.5
 
 # IndexTTS-2
-python webui_v2.py
+uv run python webui_v2.py
 ```
 
+> 说明：首次启动可能会尝试编译 BigVGAN 的 CUDA 扩展。如果你看到类似 `nvcc fatal: Unsupported gpu architecture 'compute_120'` 的报错，通常是 CUDA Toolkit（nvcc）版本偏旧导致；程序会自动回退到 torch 实现，一般不影响使用。你也可以通过 `./run_webui.sh --no-cuda-kernel` 或设置环境变量 `INDEXTTS_USE_CUDA_KERNEL=0` 来直接跳过编译。
 
 ## API
 
@@ -108,10 +150,10 @@ python webui_v2.py
 
 ```bash
 # Index-TTS-1.0/1.5
-python api_server.py
+uv run python api_server.py
 
 # IndexTTS-2
-python api_server_v2.py
+uv run python api_server_v2.py
 ```
 
 ### 启动参数

@@ -44,7 +44,7 @@ from vllm.v1.engine.async_llm import AsyncLLM
 
 class IndexTTS2:
     def __init__(
-        self, model_dir="checkpoints", is_fp16=False, device=None, use_cuda_kernel=None, gpu_memory_utilization=0.25, qwenemo_gpu_memory_utilization=0.10
+        self, model_dir="checkpoints", is_fp16=False, device=None, use_cuda_kernel=None, gpu_memory_utilization=0.25, qwenemo_gpu_memory_utilization=0.20
     ):
         """
         Args:
@@ -54,6 +54,17 @@ class IndexTTS2:
             device (str): device to use (e.g., 'cuda:0', 'cpu'). If None, it will be set automatically based on the availability of CUDA or MPS.
             use_cuda_kernel (None | bool): whether to use BigVGan custom fused activation CUDA kernel, only for CUDA device.
         """
+        def _get_env_bool(name: str):
+            value = os.getenv(name)
+            if value is None:
+                return None
+            value = value.strip().lower()
+            if value in {"1", "true", "yes", "y", "on"}:
+                return True
+            if value in {"0", "false", "no", "n", "off"}:
+                return False
+            return None
+
         if device is not None:
             self.device = device
             self.is_fp16 = False if device == "cpu" else is_fp16
@@ -71,6 +82,10 @@ class IndexTTS2:
             self.is_fp16 = False
             self.use_cuda_kernel = False
             logger.info(">> Be patient, it may take a while to run in CPU mode.")
+
+        env_use_cuda_kernel = _get_env_bool("INDEXTTS_USE_CUDA_KERNEL")
+        if env_use_cuda_kernel is not None:
+            self.use_cuda_kernel = bool(env_use_cuda_kernel) and self.device.startswith("cuda")
 
         cfg_path = os.path.join(model_dir, "config.yaml")
         self.cfg = OmegaConf.load(cfg_path)
@@ -491,7 +506,7 @@ def find_most_similar_cosine(query_vector, matrix):
     return most_similar_index
 
 class QwenEmotion:
-    def __init__(self, model_dir, gpu_memory_utilization=0.1):
+    def __init__(self, model_dir, gpu_memory_utilization=0.2):
         self.model_dir = model_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
 

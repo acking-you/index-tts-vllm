@@ -75,6 +75,17 @@ class IndexTTS:
             device (str): device to use (e.g., 'cuda:0', 'cpu'). If None, it will be set automatically based on the availability of CUDA or MPS.
             use_cuda_kernel (None | bool): whether to use BigVGan custom fused activation CUDA kernel, only for CUDA device.
         """
+        def _get_env_bool(name: str):
+            value = os.getenv(name)
+            if value is None:
+                return None
+            value = value.strip().lower()
+            if value in {"1", "true", "yes", "y", "on"}:
+                return True
+            if value in {"0", "false", "no", "n", "off"}:
+                return False
+            return None
+
         if device is not None:
             self.device = device
             self.is_fp16 = False if device == "cpu" else is_fp16
@@ -92,6 +103,10 @@ class IndexTTS:
             self.is_fp16 = False
             self.use_cuda_kernel = False
             print(">> Be patient, it may take a while to run in CPU mode.")
+
+        env_use_cuda_kernel = _get_env_bool("INDEXTTS_USE_CUDA_KERNEL")
+        if env_use_cuda_kernel is not None:
+            self.use_cuda_kernel = bool(env_use_cuda_kernel) and self.device.startswith("cuda")
 
         cfg_path = os.path.join(model_dir, "config.yaml")
         self.cfg = OmegaConf.load(cfg_path)
